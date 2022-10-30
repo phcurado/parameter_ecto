@@ -1,6 +1,5 @@
 defmodule Parameter.Ecto.ChangesetTest do
   use ExUnit.Case
-  doctest Parameter.Ecto.Changeset
 
   alias Parameter.Support.EctoSchemas
 
