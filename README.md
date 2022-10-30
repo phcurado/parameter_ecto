@@ -1,5 +1,5 @@
 # Parameter.Ecto
-
+<!-- MDOC !-->
 Integrates [Parameter](https://github.com/phcurado/parameter) with [Ecto](https://github.com/elixir-ecto/ecto) for changeset casting and validation.
 
 ```elixir
@@ -13,24 +13,32 @@ defmodule UserParam do
     field :last_name, :string, key: "lastName"
     field :email, :string
 
-    has_one :address, Address do
-      field :city, :string, required: true
-      field :street, :string, required: true
-    end
-  end
-
-  def new(params, opts \\ []) do
-    __MODULE__
-    |> Parameter.load(params, opts)
-    |> changeset()
-    |> apply_params(opts) # Parameter function that applies the changeset into `{:ok, result}` or `{:error, changeset}`
+    has_one :address, AddressParam
   end
 
   def changeset(params) do
     __MODULE__
-    |> cast_params(params) # Parameter function that automatically identify your param fields
+    |> cast_params(params) # Parameter function that automatically identify param fields
     |> validate_required([:first_name, :last_name])
     |> validate_format(:email, ~r/@/)
+    |> cast_assoc_params(:address, with: &AddressParam.changeset(&1))
+  end
+end
+
+defmodule AddressParam do
+  use Parameter.Schema
+  import Parameter.Ecto.Changeset
+  import Ecto.Changeset
+
+  param do
+    field :city, :string
+    field :street, :string
+  end
+
+  def changeset(params) do
+    __MODULE__
+    |> cast_params(params)
+    |> validate_required([:city, :street])
   end
 end
 
@@ -44,9 +52,34 @@ iex> params = %{
     "street" => "Broadway"
   }
 }
-...> UserParam.changeset(%UserParam{}, params)
-#Ecto.Changeset<action: nil, changes: %{address: %{"city" => "New York", "street" => "Broadway"}, email: "john.doe@email.com"}, errors: [first_name: {"can't be blank", [validation: :required]}, last_name: {"can't be blank", [validation: :required]}], data: #Parameter.EctoChangesetTest.ReadmeTest<>, valid?: false>
-
+...> {:ok, loaded_params} = Parameter.load(UserParam, params)
+...> changeset = UserParam.changeset(loaded_params)
+%Ecto.Changeset{
+  action: nil,
+  changes: %{
+    address: %Ecto.Changeset{
+      action: :insert,
+      changes: %{city: "New York", street: "Broadway"},
+      errors: [],
+      data: %AddressParam{},
+      valid?: true
+    },
+    email: "john.doe@email.com",
+    first_name: "John",
+    last_name: "Doe"
+  },
+  errors: [],
+  data: %UserParam{},
+  valid?: true
+}
+...> Ecto.Changeset.apply_action(changeset, :update)
+{:ok,
+ %UserParam{
+   first_name: "John",
+   last_name: "Doe",
+   email: "john.doe@email.com",
+   address: %AddressParam{city: "New York", street: "Broadway"}
+ }}
 ```
 
 ## Installation
