@@ -26,8 +26,8 @@ defmodule Parameter.Ecto.ChangesetTest do
     import Ecto.Changeset
 
     enum Status do
-      value 1, as: :online
-      value 2, as: :offline
+      value :online, key: 1
+      value :offline, key: 2
     end
 
     param do
